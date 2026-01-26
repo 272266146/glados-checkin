@@ -8,9 +8,9 @@ from datetime import datetime
 # 从环境变量读取Cookie（本地测试可手动设置，GitHub Actions自动注入）
 GLADOS_COOKIE = os.getenv("GLADOS_COOKIE", "")  # 优先读环境变量，无则为空
 # 签到接口（适配新版页面）
-CHECKIN_URL = "https://glados.rocks/api/user/checkin"
+CHECKIN_URL = "https://glados.cloud/console/checkin"
 # 用户信息接口（用于验证Cookie有效性）
-USER_INFO_URL = "https://glados.rocks/api/user/status"
+USER_INFO_URL = "https://glados.cloud/api/user/status"
 # 请求超时时间
 TIMEOUT = 10
 # ===================== 配置结束 =====================
