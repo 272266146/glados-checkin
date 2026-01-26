@@ -1,39 +1,54 @@
 import requests
 import json
-import time
 import os
 from datetime import datetime
 
-# ===================== 配置区（无需修改） =====================
+# ===================== 配置区（无需修改，Cookie从环境变量读取） =====================
+# 从GitHub Secrets读取Cookie，本地测试可手动设置环境变量
 GLADOS_COOKIE = os.getenv("GLADOS_COOKIE", "")
-# 新域名 + 正确的签到API接口
+# 你Postman验证过的签到接口
 CHECKIN_URL = "https://glados.cloud/api/user/checkin"
+# 用户信息验证接口（确认Cookie有效）
 USER_INFO_URL = "https://glados.cloud/api/user/status"
+# 请求超时时间
 TIMEOUT = 15
 # ===================== 配置结束 =====================
 
+# 校验Cookie是否配置
 if not GLADOS_COOKIE:
     print("❌ 未配置GLADOS_COOKIE环境变量！")
     exit(1)
 
-# 强化请求头（模拟真实浏览器）
+# 完全复刻Postman的请求头（一字不差）
 headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-    "Referer": "https://glados.cloud/console/checkin",
-    "Origin": "https://glados.cloud",
-    "Cookie": GLADOS_COOKIE,
-    "Content-Type": "application/json;charset=UTF-8",
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-    "Sec-Fetch-Dest": "empty",
-    "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Site": "same-origin"
+    "accept": "application/json, text/plain, */*",
+    "accept-language": "zh-CN,zh;q=0.9",
+    "content-type": "application/json;charset=UTF-8",
+    "origin": "https://glados.cloud",
+    "priority": "u=1, i",
+    "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"Windows\"",
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-origin",
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+    "cookie": GLADOS_COOKIE  # 替换为环境变量中的Cookie
+}
+
+# Postman验证过的请求体（token已更新为glados.cloud）
+checkin_data = {
+    "token": "glados.cloud"
 }
 
 def check_cookie_valid():
-    """验证Cookie是否有效"""
+    """验证Cookie是否有效（复用相同请求头）"""
     try:
-        response = requests.get(USER_INFO_URL, headers=headers, timeout=TIMEOUT)
+        response = requests.get(
+            USER_INFO_URL,
+            headers=headers,
+            timeout=TIMEOUT
+        )
         if response.status_code == 200:
             data = response.json()
             if data.get("code") == 0:
@@ -50,31 +65,36 @@ def check_cookie_valid():
         return False
 
 def glados_checkin():
-    """执行GlaDOS签到"""
+    """执行签到（完全复刻Postman的POST请求）"""
+    # 先验证Cookie
     if not check_cookie_valid():
         return
     
-    checkin_data = {
-        "token": "glados.network"
-    }
-    
     try:
+        # 发送和Postman完全一致的POST请求
         response = requests.post(
             CHECKIN_URL,
             headers=headers,
-            data=json.dumps(checkin_data),
+            data=json.dumps(checkin_data),  # 序列化请求体
             timeout=TIMEOUT
         )
         
+        # 打印原始响应（方便排查）
+        print(f"📝 签到请求响应状态码: {response.status_code}")
+        print(f"📝 签到请求原始响应: {response.text}")
+        
+        # 解析响应结果
         result = response.json()
         if result.get("code") == 0:
             print(f"🎉 签到成功！{result.get('message')}")
+            # 打印签到奖励（如果有）
             if "list" in result.get("data", {}):
                 rewards = result["data"]["list"]
                 for reward in rewards:
                     print(f"🎁 获得: {reward.get('name')} x {reward.get('count')}")
         else:
             print(f"❌ 签到失败: {result.get('message')}")
+            
     except requests.exceptions.Timeout:
         print("❌ 请求超时，请检查网络")
     except requests.exceptions.ConnectionError:
