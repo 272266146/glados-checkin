@@ -1,32 +1,33 @@
 import requests
 import json
 import time
-import os  # 新增：用于读取环境变量
+import os
 from datetime import datetime
 
 # ===================== 配置区（无需修改） =====================
-# 从环境变量读取Cookie（本地测试可手动设置，GitHub Actions自动注入）
-GLADOS_COOKIE = os.getenv("GLADOS_COOKIE", "")  # 优先读环境变量，无则为空
-# 签到接口（适配新版页面）
+GLADOS_COOKIE = os.getenv("GLADOS_COOKIE", "")
+# 新域名 + 正确的签到API接口
 CHECKIN_URL = "https://glados.cloud/api/user/checkin"
-# 用户信息接口（用于验证Cookie有效性）
 USER_INFO_URL = "https://glados.cloud/api/user/status"
-# 请求超时时间
-TIMEOUT = 10
+TIMEOUT = 15
 # ===================== 配置结束 =====================
 
-# 校验Cookie是否存在
 if not GLADOS_COOKIE:
-    print("❌ 未找到GLADOS_COOKIE环境变量，请先配置！")
+    print("❌ 未配置GLADOS_COOKIE环境变量！")
     exit(1)
 
-# 请求头配置（模拟浏览器）
+# 强化请求头（模拟真实浏览器）
 headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Referer": "https://glados.rocks/console/checkin",
-    "Origin": "https://glados.rocks",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Referer": "https://glados.cloud/console/checkin",
+    "Origin": "https://glados.cloud",
     "Cookie": GLADOS_COOKIE,
-    "Content-Type": "application/json;charset=UTF-8"
+    "Content-Type": "application/json;charset=UTF-8",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin"
 }
 
 def check_cookie_valid():
@@ -50,17 +51,14 @@ def check_cookie_valid():
 
 def glados_checkin():
     """执行GlaDOS签到"""
-    # 先验证Cookie
     if not check_cookie_valid():
         return
     
-    # 构造签到请求数据（适配新版接口）
     checkin_data = {
         "token": "glados.network"
     }
     
     try:
-        # 发送签到请求
         response = requests.post(
             CHECKIN_URL,
             headers=headers,
@@ -68,18 +66,15 @@ def glados_checkin():
             timeout=TIMEOUT
         )
         
-        # 解析响应结果
         result = response.json()
         if result.get("code") == 0:
             print(f"🎉 签到成功！{result.get('message')}")
-            # 打印签到奖励
             if "list" in result.get("data", {}):
                 rewards = result["data"]["list"]
                 for reward in rewards:
                     print(f"🎁 获得: {reward.get('name')} x {reward.get('count')}")
         else:
             print(f"❌ 签到失败: {result.get('message')}")
-            
     except requests.exceptions.Timeout:
         print("❌ 请求超时，请检查网络")
     except requests.exceptions.ConnectionError:
