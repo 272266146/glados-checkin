@@ -1,4 +1,4 @@
-name: GlaDOS Auto Checkin
+name: GlaDOS Auto Checkin 
 
 # 触发规则：每日UTC时间0点（北京时间8点）执行，支持手动触发
 on:
